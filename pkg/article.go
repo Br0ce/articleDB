@@ -1,8 +1,11 @@
 package pkg
 
 import (
+	"context"
 	"net/url"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Article representes a news article. The fields title, addr, author and published
@@ -45,4 +48,22 @@ func (a Article) Equal(b Article) bool {
 		return false
 	}
 	return true
+}
+
+type ArticleService struct {
+	log *zap.SugaredLogger
+}
+
+func NewArticleService(log *zap.SugaredLogger) *ArticleService {
+	return &ArticleService{log: log}
+}
+
+func (s *ArticleService) Add(ctx context.Context, article Article) error {
+	s.log.Infow("add article", "method", "Add", "articleID", article.ID)
+
+	if !ValidID(article.ID) {
+		return ErrInvalidID
+	}
+
+	return nil
 }
