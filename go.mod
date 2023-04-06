@@ -3,8 +3,9 @@ module github.com/Br0ce/articleDB
 go 1.20
 
 require (
-	go.uber.org/zap v1.24.0
 	github.com/google/uuid v1.3.0
+	go.uber.org/zap v1.24.0
+	golang.org/x/sync v0.1.0
 )
 
 require (

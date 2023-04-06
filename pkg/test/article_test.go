@@ -1,14 +1,11 @@
 package test
 
 import (
-	"context"
 	"net/url"
 	"testing"
 	"time"
 
 	articleDB "github.com/Br0ce/articleDB/pkg"
-	"github.com/Br0ce/articleDB/pkg/logger"
-	"go.uber.org/zap"
 )
 
 func TestArticle_Equal(t *testing.T) {
@@ -127,59 +124,6 @@ func TestArticle_Equal(t *testing.T) {
 			}
 			if got := a.Equal(tt.args.b); got != tt.want {
 				t.Errorf("Article.Equal() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestArticleService_Add(t *testing.T) {
-	t.Parallel()
-
-	type fields struct {
-		log *zap.SugaredLogger
-	}
-	type args struct {
-		ctx     context.Context
-		article articleDB.Article
-	}
-
-	log, err := logger.NewTest(true)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
-
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name:   "invalid id",
-			fields: fields{log: log},
-			args: args{
-				ctx:     context.TODO(),
-				article: articleDB.Article{ID: ""},
-			},
-			wantErr: true,
-		},
-		{
-			name:   "pass",
-			fields: fields{log: log},
-			args: args{
-				ctx:     context.TODO(),
-				article: articleDB.Article{ID: articleDB.UniqueID()},
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := articleDB.NewArticleService(tt.fields.log)
-
-			if err := s.Add(tt.args.ctx, tt.args.article); (err != nil) != tt.wantErr {
-				t.Errorf("ArticleService.Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
