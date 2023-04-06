@@ -1,0 +1,21 @@
+version: 2.1
+
+jobs:
+  lint:
+    docker:
+      - image: golangci/golangci-lint:v1.52-alpine
+    steps:
+      - checkout
+      - run: golangci-lint run
+  test:
+    docker:
+      - image: cimg/go:1.20
+    steps:
+      - checkout
+      - run: go test -v -race ./...
+
+workflows:
+  sample: 
+    jobs:
+      - lint
+      - test
