@@ -48,7 +48,7 @@ func NewProduction() (*zap.SugaredLogger, error) {
 func NewTest(debug bool) (*zap.SugaredLogger, error) {
 	cfg := zap.NewProductionConfig()
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	cfg.InitialFields = map[string]any{"service": "gsgService"}
+	cfg.InitialFields = map[string]any{"service": "articleDB"}
 	cfg.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
 	cfg.Encoding = "console"
 
