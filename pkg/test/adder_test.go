@@ -18,7 +18,7 @@ func TestArticleAdder_Add(t *testing.T) {
 	type fields struct {
 		log          *zap.SugaredLogger
 		summarizerFn func(ctx context.Context, text string) (string, error)
-		nerFn        func(ctx context.Context, text string) ([]string, []string, []string, error)
+		nerizerFn    func(ctx context.Context, text string) ([]string, []string, []string, error)
 	}
 	type args struct {
 		ctx     context.Context
@@ -37,6 +37,7 @@ func TestArticleAdder_Add(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
+		errMsg  string
 	}{
 		{
 			name:   "invalid id",
@@ -46,6 +47,7 @@ func TestArticleAdder_Add(t *testing.T) {
 				article: articleDB.Article{ID: ""},
 			},
 			wantErr: true,
+			errMsg:  articleDB.ErrInvalidID.Error(),
 		},
 		{
 			name: "pass",
@@ -56,7 +58,7 @@ func TestArticleAdder_Add(t *testing.T) {
 					}
 					return "Summary of text.", nil
 				},
-				nerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
+				nerizerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
 					if txt != body {
 						t.Fatalf("ner text not equal, want %s got %s", body, txt)
 					}
@@ -76,9 +78,9 @@ func TestArticleAdder_Add(t *testing.T) {
 			name: "summarizer error",
 			fields: fields{
 				summarizerFn: func(ctx context.Context, txt string) (string, error) {
-					return "", errors.New("some error")
+					return "", errors.New("summarizer error")
 				},
-				nerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
+				nerizerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
 					return []string{}, []string{}, []string{}, nil
 				},
 				log: log},
@@ -89,6 +91,7 @@ func TestArticleAdder_Add(t *testing.T) {
 				},
 			},
 			wantErr: true,
+			errMsg:  "summarizer error",
 		},
 		{
 			name: "ner error",
@@ -96,8 +99,8 @@ func TestArticleAdder_Add(t *testing.T) {
 				summarizerFn: func(ctx context.Context, txt string) (string, error) {
 					return "Summary of text.", nil
 				},
-				nerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
-					return nil, nil, nil, errors.New("some error")
+				nerizerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
+					return nil, nil, nil, errors.New("ner error")
 				},
 				log: log},
 			args: args{
@@ -108,18 +111,24 @@ func TestArticleAdder_Add(t *testing.T) {
 				},
 			},
 			wantErr: true,
+			errMsg:  "ner error",
 		},
 	}
 
 	for _, tt := range tests {
 		summarizer := &mock.Summarizer{SummarizeFn: tt.fields.summarizerFn}
-		ner := &mock.NERer{NERFn: tt.fields.nerFn}
+		ner := &mock.NERer{NERFn: tt.fields.nerizerFn}
 
 		t.Run(tt.name, func(t *testing.T) {
 			a := articleDB.NewArticleAdder(summarizer, ner, tt.fields.log)
 
-			if err := a.Add(tt.args.ctx, tt.args.article); (err != nil) != tt.wantErr {
+			err := a.Add(tt.args.ctx, tt.args.article)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("ArticleAdder.Add() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr && (tt.errMsg != err.Error()) {
+				t.Errorf("errMsg want %v, got %v", tt.errMsg, err.Error())
 			}
 
 		})
