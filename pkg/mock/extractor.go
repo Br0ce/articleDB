@@ -12,12 +12,12 @@ func (s *Summarizer) Summarize(ctx context.Context, text string) (string, error)
 	return s.SummarizeFn(ctx, text)
 }
 
-type NERer struct {
+type NER struct {
 	NERFn      func(ctx context.Context, text string) ([]string, []string, []string, error)
 	NERInvoked bool
 }
 
-func (n *NERer) NER(ctx context.Context, text string) ([]string, []string, []string, error) {
+func (n *NER) NER(ctx context.Context, text string) ([]string, []string, []string, error) {
 	n.NERInvoked = true
 	return n.NERFn(ctx, text)
 }

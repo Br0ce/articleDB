@@ -1,4 +1,4 @@
-package test
+package adder
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 
 	"go.uber.org/zap"
 
-	articleDB "github.com/Br0ce/articleDB/pkg"
+	"github.com/Br0ce/articleDB/pkg/article"
+	"github.com/Br0ce/articleDB/pkg/ids"
 	"github.com/Br0ce/articleDB/pkg/logger"
 	"github.com/Br0ce/articleDB/pkg/mock"
 )
 
-func TestArticleAdder_Add(t *testing.T) {
+func TestAdder_Add(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
@@ -22,7 +23,7 @@ func TestArticleAdder_Add(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		article articleDB.Article
+		article article.Article
 	}
 
 	log, err := logger.NewTest(true)
@@ -44,10 +45,10 @@ func TestArticleAdder_Add(t *testing.T) {
 			fields: fields{log: log},
 			args: args{
 				ctx:     context.TODO(),
-				article: articleDB.Article{ID: ""},
+				article: article.Article{ID: ""},
 			},
 			wantErr: true,
-			errMsg:  articleDB.ErrInvalidID.Error(),
+			errMsg:  ids.ErrInvalidID.Error(),
 		},
 		{
 			name: "pass",
@@ -67,8 +68,8 @@ func TestArticleAdder_Add(t *testing.T) {
 				log: log},
 			args: args{
 				ctx: context.TODO(),
-				article: articleDB.Article{
-					ID:   articleDB.UniqueID(),
+				article: article.Article{
+					ID:   ids.UniqueID(),
 					Body: body,
 				},
 			},
@@ -86,8 +87,8 @@ func TestArticleAdder_Add(t *testing.T) {
 				log: log},
 			args: args{
 				ctx: context.TODO(),
-				article: articleDB.Article{
-					ID: articleDB.UniqueID(),
+				article: article.Article{
+					ID: ids.UniqueID(),
 				},
 			},
 			wantErr: true,
@@ -105,8 +106,8 @@ func TestArticleAdder_Add(t *testing.T) {
 				log: log},
 			args: args{
 				ctx: context.TODO(),
-				article: articleDB.Article{
-					ID:   articleDB.UniqueID(),
+				article: article.Article{
+					ID:   ids.UniqueID(),
 					Body: body,
 				},
 			},
@@ -117,10 +118,10 @@ func TestArticleAdder_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		summarizer := &mock.Summarizer{SummarizeFn: tt.fields.summarizerFn}
-		ner := &mock.NERer{NERFn: tt.fields.nerizerFn}
+		ner := &mock.NER{NERFn: tt.fields.nerizerFn}
 
 		t.Run(tt.name, func(t *testing.T) {
-			a := articleDB.NewArticleAdder(summarizer, ner, tt.fields.log)
+			a := New(summarizer, ner, tt.fields.log)
 
 			err := a.Add(tt.args.ctx, tt.args.article)
 			if (err != nil) != tt.wantErr {

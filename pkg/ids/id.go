@@ -1,6 +1,14 @@
-package pkg
+package ids
 
-import "github.com/google/uuid"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
+
+var (
+	ErrInvalidID = errors.New("invalid id")
+)
 
 func UniqueID() string {
 	return uuid.NewString()

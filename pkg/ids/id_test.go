@@ -1,23 +1,22 @@
-package test
+package ids
 
 import (
 	"fmt"
 	"testing"
 
-	articleDB "github.com/Br0ce/articleDB/pkg"
 	"github.com/google/uuid"
 )
 
 func TestUniqueID(t *testing.T) {
 	t.Parallel()
 
-	got := articleDB.UniqueID()
+	got := UniqueID()
 
 	if _, err := uuid.Parse(got); err != nil {
 		t.Errorf("invalid ID, got %v, err %v", got, err.Error())
 	}
 
-	other := articleDB.UniqueID()
+	other := UniqueID()
 	if got == other {
 		t.Errorf("id is not unique, got %v, other %v", got, other)
 	}
@@ -43,7 +42,7 @@ func TestValidID(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "invalid id",
+			name: "invalid",
 			id:   "1234",
 			want: false,
 		},
@@ -57,8 +56,8 @@ func TestValidID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fmt.Println(uuid.NewString())
-			if got := articleDB.ValidID(tt.id); got != tt.want {
-				t.Errorf("ValidID() = %v, want %v", got, tt.want)
+			if got := ValidID(tt.id); got != tt.want {
+				t.Errorf("Valid() = %v, want %v", got, tt.want)
 			}
 		})
 	}
