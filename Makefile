@@ -6,14 +6,17 @@ format:
 lint:
 	golangci-lint run
 
+clean-test:
+	go clean -testcache
+
 test:
-	go test ./...
+	$(MAKE) clean-test && go test -parallel 4 ./pkg/...
 
 test-v:
-	go test -v ./...
+	$(MAKE) clean-test && go test -v -cover ./pkg/...
 
 test-race:
-	go test -race ./...
+	$(MAKE) clean-test && go test -race ./pkg/...
 
 clean:
 	rm -f ./bin/
