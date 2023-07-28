@@ -18,10 +18,18 @@ type Article struct {
 	Published time.Time
 	Body      string
 	Summary   string
-	Tags      []string
-	Pers      []string
-	Locs      []string
-	Orgs      []string
+	Keywords  []string
+	NER       NER
+}
+
+// NER holds lists of the different entity types found in an article.
+type NER struct {
+	// Pers is a list of persons found in the article.
+	Pers []string
+	// Locs is a list of locations found in the article.
+	Locs []string
+	// Orgs is a list of Organisations found in the article.
+	Orgs []string
 }
 
 // Equal checks if this Article a is equal to the given Article b.

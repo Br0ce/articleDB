@@ -15,7 +15,7 @@ type Summarizer interface {
 }
 
 type NamedEntityRecognizer interface {
-	NER(ctx context.Context, text string) ([]string, []string, []string, error)
+	NER(ctx context.Context, text string) (article.NER, error)
 }
 
 type Adder struct {
@@ -61,13 +61,11 @@ func (a *Adder) addFeatures(ctx context.Context, art article.Article) (article.A
 	})
 
 	g.Go(func() error {
-		pers, locs, orgs, err := a.nerizer.NER(ctx, art.Body)
+		ner, err := a.nerizer.NER(ctx, art.Body)
 		if err != nil {
 			return err
 		}
-		art.Pers = pers
-		art.Locs = locs
-		art.Orgs = orgs
+		art.NER = ner
 		return nil
 	})
 

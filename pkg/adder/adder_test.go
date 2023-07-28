@@ -19,7 +19,7 @@ func TestAdder_Add(t *testing.T) {
 	type fields struct {
 		log          *zap.SugaredLogger
 		summarizerFn func(ctx context.Context, text string) (string, error)
-		nerizerFn    func(ctx context.Context, text string) ([]string, []string, []string, error)
+		nerizerFn    func(ctx context.Context, text string) (article.NER, error)
 	}
 	type args struct {
 		ctx     context.Context
@@ -59,11 +59,11 @@ func TestAdder_Add(t *testing.T) {
 					}
 					return "Summary of text.", nil
 				},
-				nerizerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
+				nerizerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					if txt != body {
 						t.Fatalf("ner text not equal, want %s got %s", body, txt)
 					}
-					return []string{}, []string{}, []string{}, nil
+					return article.NER{}, nil
 				},
 				log: log},
 			args: args{
@@ -81,8 +81,8 @@ func TestAdder_Add(t *testing.T) {
 				summarizerFn: func(ctx context.Context, txt string) (string, error) {
 					return "", errors.New("summarizer error")
 				},
-				nerizerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
-					return []string{}, []string{}, []string{}, nil
+				nerizerFn: func(ctx context.Context, txt string) (article.NER, error) {
+					return article.NER{}, nil
 				},
 				log: log},
 			args: args{
@@ -100,8 +100,8 @@ func TestAdder_Add(t *testing.T) {
 				summarizerFn: func(ctx context.Context, txt string) (string, error) {
 					return "Summary of text.", nil
 				},
-				nerizerFn: func(ctx context.Context, txt string) ([]string, []string, []string, error) {
-					return nil, nil, nil, errors.New("ner error")
+				nerizerFn: func(ctx context.Context, txt string) (article.NER, error) {
+					return article.NER{}, errors.New("ner error")
 				},
 				log: log},
 			args: args{

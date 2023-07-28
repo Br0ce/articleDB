@@ -122,7 +122,7 @@ func TestClient_Summarize(t *testing.T) {
 	}
 }
 
-func TestClient_execRequest_pass(t *testing.T) {
+func TestClient_httpRequest_pass(t *testing.T) {
 	t.Parallel()
 	apiKey := "testKey"
 	id := "1234"
@@ -173,7 +173,7 @@ func TestClient_execRequest_pass(t *testing.T) {
 			log:            log,
 		}
 
-		got, err := c.execRequest(context.TODO(), strings.NewReader(payload))
+		got, err := c.httpRequest(context.TODO(), strings.NewReader(payload))
 		if err != nil {
 			t.Errorf("Client.execRequest() error = %v", err)
 			return
@@ -184,7 +184,7 @@ func TestClient_execRequest_pass(t *testing.T) {
 	})
 }
 
-func TestClient_execRequest_fail(t *testing.T) {
+func TestClient_httpRequest_fail(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -235,7 +235,7 @@ func TestClient_execRequest_fail(t *testing.T) {
 			ctx, cancleFn := context.WithTimeout(context.TODO(), tt.timeout)
 			defer cancleFn()
 
-			_, err := c.execRequest(ctx, strings.NewReader(""))
+			_, err := c.httpRequest(ctx, strings.NewReader(""))
 
 			if err == nil {
 				t.Fatalf("Client.execRequest() without err")
@@ -244,7 +244,7 @@ func TestClient_execRequest_fail(t *testing.T) {
 	}
 }
 
-func TestClient_getResultString(t *testing.T) {
+func TestClient_resultText(t *testing.T) {
 	t.Parallel()
 	log, err := logger.NewTest(false)
 	if err != nil {
@@ -304,14 +304,14 @@ func TestClient_getResultString(t *testing.T) {
 				log: tt.log,
 			}
 
-			got, err := c.getResultString(tt.arg)
+			got, err := c.resultText(tt.arg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Client.getResultString() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Client.resultText() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if got != tt.want {
-				t.Errorf("Client.getResultString() = %v, want %v", got, tt.want)
+				t.Errorf("Client.resultText() = %v, want %v", got, tt.want)
 			}
 		})
 	}
