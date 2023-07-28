@@ -17,10 +17,12 @@ func TestAdder_Add(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		log          *zap.SugaredLogger
-		summarizerFn func(ctx context.Context, text string) (string, error)
-		nerizerFn    func(ctx context.Context, text string) (article.NER, error)
+		log   *zap.SugaredLogger
+		sumFn func(ctx context.Context, text string) (string, error)
+		nerFn func(ctx context.Context, text string) (article.NER, error)
+		addFn func(ctx context.Context, ar article.Article) (string, error)
 	}
+
 	type args struct {
 		ctx     context.Context
 		article article.Article
@@ -53,17 +55,20 @@ func TestAdder_Add(t *testing.T) {
 		{
 			name: "pass",
 			fields: fields{
-				summarizerFn: func(ctx context.Context, txt string) (string, error) {
+				sumFn: func(ctx context.Context, txt string) (string, error) {
 					if txt != body {
 						t.Fatalf("summarizer text not equal, want %s got %s", body, txt)
 					}
 					return "Summary of text.", nil
 				},
-				nerizerFn: func(ctx context.Context, txt string) (article.NER, error) {
+				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					if txt != body {
 						t.Fatalf("ner text not equal, want %s got %s", body, txt)
 					}
 					return article.NER{}, nil
+				},
+				addFn: func(ctx context.Context, ar article.Article) (string, error) {
+					return "", nil
 				},
 				log: log},
 			args: args{
@@ -78,11 +83,14 @@ func TestAdder_Add(t *testing.T) {
 		{
 			name: "summarizer error",
 			fields: fields{
-				summarizerFn: func(ctx context.Context, txt string) (string, error) {
+				sumFn: func(ctx context.Context, txt string) (string, error) {
 					return "", errors.New("summarizer error")
 				},
-				nerizerFn: func(ctx context.Context, txt string) (article.NER, error) {
+				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					return article.NER{}, nil
+				},
+				addFn: func(ctx context.Context, ar article.Article) (string, error) {
+					return "", nil
 				},
 				log: log},
 			args: args{
@@ -97,11 +105,14 @@ func TestAdder_Add(t *testing.T) {
 		{
 			name: "ner error",
 			fields: fields{
-				summarizerFn: func(ctx context.Context, txt string) (string, error) {
+				sumFn: func(ctx context.Context, txt string) (string, error) {
 					return "Summary of text.", nil
 				},
-				nerizerFn: func(ctx context.Context, txt string) (article.NER, error) {
+				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					return article.NER{}, errors.New("ner error")
+				},
+				addFn: func(ctx context.Context, ar article.Article) (string, error) {
+					return "", nil
 				},
 				log: log},
 			args: args{
@@ -114,14 +125,38 @@ func TestAdder_Add(t *testing.T) {
 			wantErr: true,
 			errMsg:  "ner error",
 		},
+		{
+			name: "db error",
+			fields: fields{
+				sumFn: func(ctx context.Context, txt string) (string, error) {
+					return "Summary of text.", nil
+				},
+				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
+					return article.NER{}, nil
+				},
+				addFn: func(ctx context.Context, ar article.Article) (string, error) {
+					return "", errors.New("db error")
+				},
+				log: log},
+			args: args{
+				ctx: context.TODO(),
+				article: article.Article{
+					ID:   ids.UniqueID(),
+					Body: body,
+				},
+			},
+			wantErr: true,
+			errMsg:  "db error",
+		},
 	}
 
 	for _, tt := range tests {
-		summarizer := &mock.Summarizer{SummarizeFn: tt.fields.summarizerFn}
-		ner := &mock.NER{NERFn: tt.fields.nerizerFn}
+		sumer := &mock.Summarizer{SummarizeFn: tt.fields.sumFn}
+		nerer := &mock.NER{NERFn: tt.fields.nerFn}
+		db := &mock.DB{AddFn: tt.fields.addFn}
 
 		t.Run(tt.name, func(t *testing.T) {
-			a := New(summarizer, ner, tt.fields.log)
+			a := New(sumer, nerer, db, tt.fields.log)
 
 			err := a.Add(tt.args.ctx, tt.args.article)
 			if (err != nil) != tt.wantErr {

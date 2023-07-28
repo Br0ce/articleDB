@@ -19,26 +19,33 @@ type NamedEntityRecognizer interface {
 }
 
 type Adder struct {
-	nerizer    NamedEntityRecognizer
-	summarizer Summarizer
-	log        *zap.SugaredLogger
+	nerer NamedEntityRecognizer
+	sumer Summarizer
+	db    article.DB
+	log   *zap.SugaredLogger
 }
 
-func New(summarizer Summarizer, nerizer NamedEntityRecognizer, log *zap.SugaredLogger) *Adder {
+func New(sumer Summarizer, nerer NamedEntityRecognizer, db article.DB, log *zap.SugaredLogger) *Adder {
 	return &Adder{
-		nerizer:    nerizer,
-		summarizer: summarizer,
-		log:        log}
+		nerer: nerer,
+		sumer: sumer,
+		db:    db,
+		log:   log}
 }
 
-func (a *Adder) Add(ctx context.Context, art article.Article) error {
-	a.log.Infow("add article", "method", "Add", "articleID", art.ID)
+func (a *Adder) Add(ctx context.Context, ar article.Article) error {
+	a.log.Infow("add article", "method", "Add", "articleID", ar.ID)
 
-	if !ids.ValidID(art.ID) {
+	if !ids.ValidID(ar.ID) {
 		return ids.ErrInvalidID
 	}
 
-	art, err := a.addFeatures(ctx, art)
+	ar, err := a.addFeatures(ctx, ar)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.db.Add(ctx, ar)
 	if err != nil {
 		return err
 	}
@@ -46,33 +53,33 @@ func (a *Adder) Add(ctx context.Context, art article.Article) error {
 	return nil
 }
 
-func (a *Adder) addFeatures(ctx context.Context, art article.Article) (article.Article, error) {
-	a.log.Infow("extract features and add to article", "method", "addFeatures", "articleID", art.ID)
+func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Article, error) {
+	a.log.Infow("extract features and add to article", "method", "addFeatures", "articleID", ar.ID)
 	g, ctx := errgroup.WithContext(ctx)
 
-	a.log.Debugw("start extracting features ...", "method", "addFeatures", "articleID", art.ID)
+	a.log.Debugw("start extracting features ...", "method", "addFeatures", "articleID", ar.ID)
 	g.Go(func() error {
-		summary, err := a.summarizer.Summarize(ctx, art.Body)
+		sum, err := a.sumer.Summarize(ctx, ar.Body)
 		if err != nil {
 			return err
 		}
-		art.Summary = summary
+		ar.Summary = sum
 		return nil
 	})
 
 	g.Go(func() error {
-		ner, err := a.nerizer.NER(ctx, art.Body)
+		ner, err := a.nerer.NER(ctx, ar.Body)
 		if err != nil {
 			return err
 		}
-		art.NER = ner
+		ar.NER = ner
 		return nil
 	})
 
-	a.log.Debugw("wait for feature extraction to finish", "method", "addFeatures", "articleID", art.ID)
+	a.log.Debugw("wait for feature extraction to finish", "method", "addFeatures", "articleID", ar.ID)
 	if err := g.Wait(); err != nil {
 		return article.Article{}, err
 	}
 
-	return art, nil
+	return ar, nil
 }
