@@ -6,12 +6,13 @@ import (
 	"reflect"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/Br0ce/articleDB/pkg/article"
-	"github.com/Br0ce/articleDB/pkg/client/noop"
+	"github.com/Br0ce/articleDB/pkg/extract/noop"
 	"github.com/Br0ce/articleDB/pkg/ids"
 	"github.com/Br0ce/articleDB/pkg/logger"
 	"github.com/Br0ce/articleDB/pkg/mock"
-	"go.uber.org/zap"
 )
 
 func TestAdder_Add(t *testing.T) {
@@ -152,16 +153,16 @@ func TestAdder_Add(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		sumer := &mock.Summarizer{SummarizeFn: tt.fields.sumFn}
-		nerer := &mock.NER{NERFn: tt.fields.nerFn}
+		sun := &mock.Summarizer{SummarizeFn: tt.fields.sumFn}
+		ner := &mock.NER{NERFn: tt.fields.nerFn}
 		db := &mock.DB{AddFn: tt.fields.addFn}
 
 		t.Run(tt.name, func(t *testing.T) {
 			a := Adder{
-				sumer: sumer,
-				nerer: nerer,
-				db:    db,
-				log:   tt.fields.log}
+				sum: sun,
+				ner: ner,
+				db:  db,
+				log: tt.fields.log}
 
 			err := a.Add(tt.args.ctx, tt.args.article)
 			if (err != nil) != tt.wantErr {
@@ -171,7 +172,6 @@ func TestAdder_Add(t *testing.T) {
 			if tt.wantErr && (tt.errMsg != err.Error()) {
 				t.Errorf("errMsg want %v, got %v", tt.errMsg, err.Error())
 			}
-
 		})
 	}
 }
@@ -201,9 +201,9 @@ func TestNewWith(t *testing.T) {
 			},
 			wantErr: false,
 			want: &Adder{
-				sumer: noop,
-				nerer: noop,
-				log:   log,
+				sum: noop,
+				ner: noop,
+				log: log,
 			},
 		},
 		{

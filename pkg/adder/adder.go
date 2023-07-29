@@ -20,10 +20,10 @@ type NamedEntityRecognizer interface {
 }
 
 type Adder struct {
-	nerer NamedEntityRecognizer
-	sumer Summarizer
-	db    article.DB
-	log   *zap.SugaredLogger
+	ner NamedEntityRecognizer
+	sum Summarizer
+	db  article.DB
+	log *zap.SugaredLogger
 }
 
 type AdderOption func(a *Adder)
@@ -35,11 +35,11 @@ func New(opts ...AdderOption) (*Adder, error) {
 		opt(adder)
 	}
 
-	if adder.sumer == nil {
+	if adder.sum == nil {
 		return nil, errors.New("summarizer is nil")
 	}
 
-	if adder.nerer == nil {
+	if adder.ner == nil {
 		return nil, errors.New("nerer is nil")
 	}
 
@@ -50,15 +50,15 @@ func New(opts ...AdderOption) (*Adder, error) {
 	return adder, nil
 }
 
-func WithSummarizer(sumer Summarizer) AdderOption {
+func WithSummarizer(sum Summarizer) AdderOption {
 	return func(a *Adder) {
-		a.sumer = sumer
+		a.sum = sum
 	}
 }
 
-func WithNamedEntityRecognizer(nerer NamedEntityRecognizer) AdderOption {
+func WithNamedEntityRecognizer(ner NamedEntityRecognizer) AdderOption {
 	return func(a *Adder) {
-		a.nerer = nerer
+		a.ner = ner
 	}
 }
 
@@ -100,7 +100,7 @@ func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Ar
 
 	a.log.Debugw("start extracting features ...", "method", "addFeatures", "articleID", ar.ID)
 	g.Go(func() error {
-		sum, err := a.sumer.Summarize(ctx, ar.Body)
+		sum, err := a.sum.Summarize(ctx, ar.Body)
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Ar
 	})
 
 	g.Go(func() error {
-		ner, err := a.nerer.NER(ctx, ar.Body)
+		ner, err := a.ner.NER(ctx, ar.Body)
 		if err != nil {
 			return err
 		}
