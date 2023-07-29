@@ -2,6 +2,7 @@ package adder
 
 import (
 	"context"
+	"errors"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -25,12 +26,52 @@ type Adder struct {
 	log   *zap.SugaredLogger
 }
 
-func New(sumer Summarizer, nerer NamedEntityRecognizer, db article.DB, log *zap.SugaredLogger) *Adder {
-	return &Adder{
-		nerer: nerer,
-		sumer: sumer,
-		db:    db,
-		log:   log}
+type AdderOption func(a *Adder)
+
+func New(opts ...AdderOption) (*Adder, error) {
+	adder := &Adder{}
+
+	for _, opt := range opts {
+		opt(adder)
+	}
+
+	if adder.sumer == nil {
+		return nil, errors.New("summarizer is nil")
+	}
+
+	if adder.nerer == nil {
+		return nil, errors.New("nerer is nil")
+	}
+
+	if adder.log == nil {
+		return nil, errors.New("logger is nil")
+	}
+
+	return adder, nil
+}
+
+func WithSummarizer(sumer Summarizer) AdderOption {
+	return func(a *Adder) {
+		a.sumer = sumer
+	}
+}
+
+func WithNamedEntityRecognizer(nerer NamedEntityRecognizer) AdderOption {
+	return func(a *Adder) {
+		a.nerer = nerer
+	}
+}
+
+func WithDB(db article.DB) AdderOption {
+	return func(a *Adder) {
+		a.db = db
+	}
+}
+
+func WithLogger(log *zap.SugaredLogger) AdderOption {
+	return func(a *Adder) {
+		a.log = log
+	}
 }
 
 func (a *Adder) Add(ctx context.Context, ar article.Article) error {

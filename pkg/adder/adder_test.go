@@ -3,14 +3,15 @@ package adder
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
-	"go.uber.org/zap"
-
 	"github.com/Br0ce/articleDB/pkg/article"
+	"github.com/Br0ce/articleDB/pkg/client/noop"
 	"github.com/Br0ce/articleDB/pkg/ids"
 	"github.com/Br0ce/articleDB/pkg/logger"
 	"github.com/Br0ce/articleDB/pkg/mock"
+	"go.uber.org/zap"
 )
 
 func TestAdder_Add(t *testing.T) {
@@ -156,7 +157,11 @@ func TestAdder_Add(t *testing.T) {
 		db := &mock.DB{AddFn: tt.fields.addFn}
 
 		t.Run(tt.name, func(t *testing.T) {
-			a := New(sumer, nerer, db, tt.fields.log)
+			a := Adder{
+				sumer: sumer,
+				nerer: nerer,
+				db:    db,
+				log:   tt.fields.log}
 
 			err := a.Add(tt.args.ctx, tt.args.article)
 			if (err != nil) != tt.wantErr {
@@ -167,6 +172,82 @@ func TestAdder_Add(t *testing.T) {
 				t.Errorf("errMsg want %v, got %v", tt.errMsg, err.Error())
 			}
 
+		})
+	}
+}
+
+func TestNewWith(t *testing.T) {
+	t.Parallel()
+
+	log, err := logger.NewTest(false)
+	if err != nil {
+		t.Fatalf("could not init logger, %s", err.Error())
+	}
+
+	noop := noop.Client{}
+
+	tests := []struct {
+		opts    []AdderOption
+		name    string
+		want    *Adder
+		wantErr bool
+	}{
+		{
+			name: "pass",
+			opts: []AdderOption{
+				WithSummarizer(noop),
+				WithNamedEntityRecognizer(noop),
+				WithLogger(log),
+			},
+			wantErr: false,
+			want: &Adder{
+				sumer: noop,
+				nerer: noop,
+				log:   log,
+			},
+		},
+		{
+			name: "no logger",
+			opts: []AdderOption{
+				WithNamedEntityRecognizer(noop),
+				WithSummarizer(noop),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no summarizer",
+			opts: []AdderOption{
+				WithNamedEntityRecognizer(noop),
+				WithLogger(log),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no named entity recognizer",
+			opts: []AdderOption{
+				WithSummarizer(noop),
+				WithLogger(log),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := New(tt.opts...)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewWith() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr {
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewWith() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
