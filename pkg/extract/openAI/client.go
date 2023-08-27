@@ -56,6 +56,12 @@ type usageDTO struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
+type nerDTO struct {
+	Person       []string `json:"Person"`
+	Location     []string `json:"Location"`
+	Organisation []string `json:"Organization"`
+}
+
 type Client struct {
 	apiKey         string
 	completionAddr string
@@ -213,7 +219,30 @@ func (c *Client) resultText(response responseDTO) (string, error) {
 	return text, nil
 }
 
-func (c *Client) toNER(result string) (article.NER, error) {
+// toNER transforms the given text into an article.NER. The text is
+// expected to be the string respresentation of a JSON with can be unmarshalled
+// into an nerDTO.
+func (c *Client) toNER(text string) (article.NER, error) {
 	c.log.Debugw("get namedEntities from result text", "method", "toNER")
-	return article.NER{}, nil
+
+	if text == "" {
+		return article.NER{}, errors.New("text is empty")
+	}
+
+	var ner nerDTO
+	err := encoding.UnmashalJSON(text, &ner)
+	if err != nil {
+		return article.NER{}, err
+	}
+
+	c.log.Debugw("check unmarshal result text", "method", "toNER",
+		"Persons", ner.Person,
+		"Locations", ner.Location,
+		"Organisations", ner.Organisation)
+
+	return article.NER{
+		Pers: ner.Person,
+		Locs: ner.Location,
+		Orgs: ner.Organisation,
+	}, nil
 }

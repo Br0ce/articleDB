@@ -28,3 +28,8 @@ func EncodeToReader(data interface{}) (io.Reader, error) {
 
 	return buf, nil
 }
+
+// UnmashalJSON unmashals the given text into data.
+func UnmashalJSON(text string, data interface{}) error {
+	return json.Unmarshal([]byte(text), data)
+}

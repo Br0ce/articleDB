@@ -13,6 +13,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/encoding"
 	"github.com/Br0ce/articleDB/pkg/logger"
 )
@@ -312,6 +313,80 @@ func TestClient_resultText(t *testing.T) {
 
 			if got != tt.want {
 				t.Errorf("Client.resultText() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClient_toNER(t *testing.T) {
+	t.Parallel()
+
+	log, err := logger.NewTest(true)
+	if err != nil {
+		t.Fatalf("could not init logger, %s", err.Error())
+	}
+
+	tests := []struct {
+		name    string
+		text    string
+		log     *zap.SugaredLogger
+		want    article.NER
+		wantErr bool
+	}{
+		{
+			name:    "empty text",
+			text:    "",
+			log:     log,
+			wantErr: true,
+			want:    article.NER{},
+		},
+		{
+			name:    "pass with newlines",
+			text:    "\n\n{\"Person\": [\"Gérald Darmanin\", \"Élisabeth Borne\"], \n\"Location\": [\"Frankreich\"], \n\"Organization\": [\"Polizei\"]}",
+			log:     log,
+			wantErr: false,
+			want: article.NER{
+				Pers: []string{"Gérald Darmanin", "Élisabeth Borne"},
+				Locs: []string{"Frankreich"},
+				Orgs: []string{"Polizei"},
+			},
+		},
+		{
+			name:    "pass",
+			text:    "{\"Person\": [\"Gérald Darmanin\", \"Élisabeth Borne\"], \"Location\": [\"Frankreich\"], \"Organization\": [\"Polizei\"]}",
+			log:     log,
+			wantErr: false,
+			want: article.NER{
+				Pers: []string{"Gérald Darmanin", "Élisabeth Borne"},
+				Locs: []string{"Frankreich"},
+				Orgs: []string{"Polizei"},
+			},
+		},
+		{
+			name:    "pass without key",
+			text:    "{ \"Location\": [\"Frankreich\"], \"Organization\": [\"Polizei\"]}",
+			log:     log,
+			wantErr: false,
+			want: article.NER{
+				Locs: []string{"Frankreich"},
+				Orgs: []string{"Polizei"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{
+				log: tt.log,
+			}
+
+			got, err := c.toNER(tt.text)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Client.toNER() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Client.toNER() = %q, want %q", got, tt.want)
 			}
 		})
 	}
