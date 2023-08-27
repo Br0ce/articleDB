@@ -10,7 +10,6 @@ import (
 
 	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/extract/noop"
-	"github.com/Br0ce/articleDB/pkg/ids"
 	"github.com/Br0ce/articleDB/pkg/logger"
 	"github.com/Br0ce/articleDB/pkg/mock"
 )
@@ -42,18 +41,9 @@ func TestAdder_Add(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
+		want    string
 		errMsg  string
 	}{
-		{
-			name:   "invalid id",
-			fields: fields{log: log},
-			args: args{
-				ctx:     context.TODO(),
-				article: article.Article{ID: ""},
-			},
-			wantErr: true,
-			errMsg:  ids.ErrInvalidID.Error(),
-		},
 		{
 			name: "pass",
 			fields: fields{
@@ -70,17 +60,18 @@ func TestAdder_Add(t *testing.T) {
 					return article.NER{}, nil
 				},
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
-					return "", nil
+					return "1234", nil
 				},
-				log: log},
+				log: log,
+			},
 			args: args{
 				ctx: context.TODO(),
 				article: article.Article{
-					ID:   ids.UniqueID(),
 					Body: body,
 				},
 			},
 			wantErr: false,
+			want:    "1234",
 		},
 		{
 			name: "summarizer error",
@@ -94,12 +85,11 @@ func TestAdder_Add(t *testing.T) {
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "", nil
 				},
-				log: log},
+				log: log,
+			},
 			args: args{
-				ctx: context.TODO(),
-				article: article.Article{
-					ID: ids.UniqueID(),
-				},
+				ctx:     context.TODO(),
+				article: article.Article{},
 			},
 			wantErr: true,
 			errMsg:  "summarizer error",
@@ -116,11 +106,11 @@ func TestAdder_Add(t *testing.T) {
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "", nil
 				},
-				log: log},
+				log: log,
+			},
 			args: args{
 				ctx: context.TODO(),
 				article: article.Article{
-					ID:   ids.UniqueID(),
 					Body: body,
 				},
 			},
@@ -139,11 +129,11 @@ func TestAdder_Add(t *testing.T) {
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "", errors.New("db error")
 				},
-				log: log},
+				log: log,
+			},
 			args: args{
 				ctx: context.TODO(),
 				article: article.Article{
-					ID:   ids.UniqueID(),
 					Body: body,
 				},
 			},
@@ -164,13 +154,21 @@ func TestAdder_Add(t *testing.T) {
 				db:  db,
 				log: tt.fields.log}
 
-			err := a.Add(tt.args.ctx, tt.args.article)
+			got, err := a.Add(tt.args.ctx, tt.args.article)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ArticleAdder.Add() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if tt.wantErr && (tt.errMsg != err.Error()) {
 				t.Errorf("errMsg want %v, got %v", tt.errMsg, err.Error())
+			}
+
+			if tt.wantErr {
+				return
+			}
+
+			if tt.want != got {
+				t.Errorf("ArticleAdder.Add() want = %s got %s", tt.want, got)
 			}
 		})
 	}

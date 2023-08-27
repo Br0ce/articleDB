@@ -8,7 +8,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Br0ce/articleDB/pkg/article"
-	"github.com/Br0ce/articleDB/pkg/ids"
 )
 
 type Summarizer interface {
@@ -74,24 +73,20 @@ func WithLogger(log *zap.SugaredLogger) AdderOption {
 	}
 }
 
-func (a *Adder) Add(ctx context.Context, ar article.Article) error {
+func (a *Adder) Add(ctx context.Context, ar article.Article) (string, error) {
 	a.log.Infow("add article", "method", "Add", "articleID", ar.ID)
-
-	if !ids.ValidID(ar.ID) {
-		return ids.ErrInvalidID
-	}
 
 	ar, err := a.addFeatures(ctx, ar)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = a.db.Add(ctx, ar)
+	id, err := a.db.Add(ctx, ar)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return id, nil
 }
 
 func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Article, error) {
