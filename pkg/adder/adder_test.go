@@ -3,10 +3,9 @@ package adder
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"reflect"
 	"testing"
-
-	"go.uber.org/zap"
 
 	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/extract/noop"
@@ -18,7 +17,7 @@ func TestAdder_Add(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		log   *zap.SugaredLogger
+		log   *slog.Logger
 		sumFn func(ctx context.Context, text string) (string, error)
 		nerFn func(ctx context.Context, text string) (article.NER, error)
 		addFn func(ctx context.Context, ar article.Article) (string, error)
@@ -29,11 +28,7 @@ func TestAdder_Add(t *testing.T) {
 		article article.Article
 	}
 
-	log, err := logger.NewTest(true)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
-
+	log := logger.NewTest(true)
 	body := "This is a test body."
 
 	tests := []struct {
@@ -177,11 +172,7 @@ func TestAdder_Add(t *testing.T) {
 func TestNewWith(t *testing.T) {
 	t.Parallel()
 
-	log, err := logger.NewTest(false)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
-
+	log := logger.NewTest(false)
 	noop := noop.Client{}
 
 	tests := []struct {

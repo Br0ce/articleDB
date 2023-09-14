@@ -1,65 +1,29 @@
 package logger
 
 import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"log/slog"
+	"os"
 )
 
-func New(devLogger bool) (*zap.SugaredLogger, error) {
+func New(devLogger bool) *slog.Logger {
+	var level = new(slog.LevelVar)
+	lg := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	lg = lg.With("service", slog.StringValue("articleDB"))
+
 	if devLogger {
-		return NewDevelopment()
+		level.Set(slog.LevelDebug)
 	}
 
-	return NewProduction()
+	return lg
 }
 
-func NewDevelopment() (*zap.SugaredLogger, error) {
-	cfg := zap.NewProductionConfig()
-	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	cfg.InitialFields = map[string]any{"service": "articleDB"}
-	cfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
-	cfg.Encoding = "console"
-	cfg.DisableStacktrace = true
-
-	zapper, err := cfg.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return zapper.Sugar(), err
-}
-
-func NewProduction() (*zap.SugaredLogger, error) {
-	cfg := zap.NewProductionConfig()
-	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	cfg.InitialFields = map[string]any{"service": "articleDB"}
-	cfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
-	cfg.Encoding = "console"
-	cfg.DisableStacktrace = true
-
-	zapper, err := cfg.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return zapper.Sugar(), err
-}
-
-func NewTest(debug bool) (*zap.SugaredLogger, error) {
-	cfg := zap.NewProductionConfig()
-	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	cfg.InitialFields = map[string]any{"service": "articleDB"}
-	cfg.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
-	cfg.Encoding = "console"
+func NewTest(debug bool) *slog.Logger {
+	var level = new(slog.LevelVar)
+	lg := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level, AddSource: true}))
 
 	if debug {
-		cfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		level.Set(slog.LevelDebug)
 	}
 
-	zapper, err := cfg.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return zapper.Sugar(), err
+	return lg
 }

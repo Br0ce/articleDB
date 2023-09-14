@@ -3,8 +3,8 @@ package adder
 import (
 	"context"
 	"errors"
+	"log/slog"
 
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Br0ce/articleDB/pkg/article"
@@ -22,7 +22,7 @@ type Adder struct {
 	ner NamedEntityRecognizer
 	sum Summarizer
 	db  article.DB
-	log *zap.SugaredLogger
+	log *slog.Logger
 }
 
 type AdderOption func(a *Adder)
@@ -67,14 +67,14 @@ func WithDB(db article.DB) AdderOption {
 	}
 }
 
-func WithLogger(log *zap.SugaredLogger) AdderOption {
+func WithLogger(log *slog.Logger) AdderOption {
 	return func(a *Adder) {
 		a.log = log
 	}
 }
 
 func (a *Adder) Add(ctx context.Context, ar article.Article) (string, error) {
-	a.log.Infow("add article", "method", "Add", "articleID", ar.ID)
+	a.log.Info("add article", "method", "Add", "articleID", ar.ID)
 
 	ar, err := a.addFeatures(ctx, ar)
 	if err != nil {
@@ -90,10 +90,10 @@ func (a *Adder) Add(ctx context.Context, ar article.Article) (string, error) {
 }
 
 func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Article, error) {
-	a.log.Infow("extract features and add to article", "method", "addFeatures", "articleID", ar.ID)
+	a.log.Info("extract features and add to article", "method", "addFeatures", "articleID", ar.ID)
 	g, ctx := errgroup.WithContext(ctx)
 
-	a.log.Debugw("start extracting features ...", "method", "addFeatures", "articleID", ar.ID)
+	a.log.Debug("start extracting features ...", "method", "addFeatures", "articleID", ar.ID)
 	g.Go(func() error {
 		sum, err := a.sum.Summarize(ctx, ar.Body)
 		if err != nil {
@@ -112,7 +112,7 @@ func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Ar
 		return nil
 	})
 
-	a.log.Debugw("wait for feature extraction to finish", "method", "addFeatures", "articleID", ar.ID)
+	a.log.Debug("wait for feature extraction to finish", "method", "addFeatures", "articleID", ar.ID)
 	if err := g.Wait(); err != nil {
 		return article.Article{}, err
 	}

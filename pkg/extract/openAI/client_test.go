@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
 
 	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/encoding"
@@ -22,17 +21,14 @@ func TestClient_Summarize(t *testing.T) {
 	t.Parallel()
 	type fields struct {
 		apiKey string
-		log    *zap.SugaredLogger
+		log    *slog.Logger
 	}
 	type args struct {
 		ctx  context.Context
 		text string
 	}
 
-	log, err := logger.NewTest(false)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
+	log := logger.NewTest(false)
 
 	text := "Some text"
 	response := "response"
@@ -163,10 +159,7 @@ func TestClient_httpRequest_pass(t *testing.T) {
 	defer svr.Close()
 
 	t.Run("pass", func(t *testing.T) {
-		log, err := logger.NewTest(false)
-		if err != nil {
-			t.Fatalf("could not init logger, %s", err.Error())
-		}
+		log := logger.NewTest(false)
 
 		c := &Client{
 			apiKey:         apiKey,
@@ -218,10 +211,7 @@ func TestClient_httpRequest_fail(t *testing.T) {
 		},
 	}
 
-	log, err := logger.NewTest(true)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
+	log := logger.NewTest(true)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -247,15 +237,12 @@ func TestClient_httpRequest_fail(t *testing.T) {
 
 func TestClient_resultText(t *testing.T) {
 	t.Parallel()
-	log, err := logger.NewTest(false)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
+	log := logger.NewTest(false)
 
 	text := "some text"
 	tests := []struct {
 		name    string
-		log     *zap.SugaredLogger
+		log     *slog.Logger
 		arg     responseDTO
 		want    string
 		wantErr bool
@@ -321,15 +308,12 @@ func TestClient_resultText(t *testing.T) {
 func TestClient_toNER(t *testing.T) {
 	t.Parallel()
 
-	log, err := logger.NewTest(true)
-	if err != nil {
-		t.Fatalf("could not init logger, %s", err.Error())
-	}
+	log := logger.NewTest(true)
 
 	tests := []struct {
 		name    string
 		text    string
-		log     *zap.SugaredLogger
+		log     *slog.Logger
 		want    article.NER
 		wantErr bool
 	}{

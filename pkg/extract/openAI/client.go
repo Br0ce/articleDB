@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
-
-	"go.uber.org/zap"
 
 	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/encoding"
@@ -65,10 +64,10 @@ type nerDTO struct {
 type Client struct {
 	apiKey         string
 	completionAddr string
-	log            *zap.SugaredLogger
+	log            *slog.Logger
 }
 
-func NewClient(apiKey string, log *zap.SugaredLogger) *Client {
+func NewClient(apiKey string, log *slog.Logger) *Client {
 	return &Client{
 		apiKey:         apiKey,
 		completionAddr: "https://api.openai.com/v1/completions",
@@ -78,7 +77,7 @@ func NewClient(apiKey string, log *zap.SugaredLogger) *Client {
 
 // Summarize uses the openAI api to perform a summarization of the given text.
 func (c *Client) Summarize(ctx context.Context, text string) (string, error) {
-	c.log.Infow("summarize text with openAI",
+	c.log.Info("summarize text with openAI",
 		"method", "Summarize",
 		"lenText", len(text))
 
@@ -102,7 +101,7 @@ func (c *Client) Summarize(ctx context.Context, text string) (string, error) {
 // NER uses the openAI api to perform named entity recognition of the given text.
 // The returned entity types are person, location and organisation.
 func (c *Client) NER(ctx context.Context, text string) (article.NER, error) {
-	c.log.Infow("perform named entity recognition with openAI",
+	c.log.Info("perform named entity recognition with openAI",
 		"method", "NER",
 		"lenText", len(text))
 
@@ -132,7 +131,7 @@ func (c *Client) NER(ctx context.Context, text string) (article.NER, error) {
 // The given completionDTO is encoded and posted to the openAI api. The response is
 // unpacked and the content is returned as text.
 func (c *Client) process(ctx context.Context, dto completionDTO) (string, error) {
-	c.log.Debugw("process openAI request", "method", "process")
+	c.log.Debug("process openAI request", "method", "process")
 
 	payload, err := encoding.EncodeToReader(dto)
 	if err != nil {
@@ -143,7 +142,7 @@ func (c *Client) process(ctx context.Context, dto completionDTO) (string, error)
 	if err != nil {
 		return "", err
 	}
-	c.log.Debugw("response dto", "method", "process", "response", response)
+	c.log.Debug("response dto", "method", "process", "response", response)
 
 	result, err := c.resultText(response)
 	if err != nil {
@@ -157,7 +156,7 @@ func (c *Client) process(ctx context.Context, dto completionDTO) (string, error)
 // To timeout the httpRequest, use an appropriate context.
 // For now, there is no retrying or throttling performed.
 func (c *Client) httpRequest(ctx context.Context, payload io.Reader) (responseDTO, error) {
-	c.log.Debugw("perform http request to openAI", "method", "httpRequest")
+	c.log.Debug("perform http request to openAI", "method", "httpRequest")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.completionAddr, payload)
 	if err != nil {
@@ -173,7 +172,7 @@ func (c *Client) httpRequest(ctx context.Context, payload io.Reader) (responseDT
 	}
 	defer resp.Body.Close()
 
-	c.log.Debugw("response info",
+	c.log.Debug("response info",
 		"method", "request",
 		"status", resp.Status,
 		"headers", resp.Header)
@@ -195,7 +194,7 @@ func (c *Client) httpRequest(ctx context.Context, payload io.Reader) (responseDT
 // it as a string. In case multipe results are present it picks the first.
 // If no result, or an empty result is found, an ErrInvalidResponse is returned.
 func (c *Client) resultText(response responseDTO) (string, error) {
-	c.log.Debugw("get result text from response", "method", "resultText")
+	c.log.Debug("get result text from response", "method", "resultText")
 
 	choices := response.Choices
 	if len(choices) == 0 {
@@ -206,7 +205,7 @@ func (c *Client) resultText(response responseDTO) (string, error) {
 	// If in the future multiple results should be used, resultText
 	// should return a slice of results.
 	if len(choices) > 1 {
-		c.log.Infow("openAI returned multiple results, use first result",
+		c.log.Info("openAI returned multiple results, use first result",
 			"method", "resultText",
 			"resultLen", len(choices))
 	}
@@ -223,7 +222,7 @@ func (c *Client) resultText(response responseDTO) (string, error) {
 // expected to be the string respresentation of a JSON with can be unmarshalled
 // into an nerDTO.
 func (c *Client) toNER(text string) (article.NER, error) {
-	c.log.Debugw("get namedEntities from result text", "method", "toNER")
+	c.log.Debug("get namedEntities from result text", "method", "toNER")
 
 	if text == "" {
 		return article.NER{}, errors.New("text is empty")
@@ -235,7 +234,7 @@ func (c *Client) toNER(text string) (article.NER, error) {
 		return article.NER{}, err
 	}
 
-	c.log.Debugw("check unmarshal result text", "method", "toNER",
+	c.log.Debug("check unmarshal result text", "method", "toNER",
 		"Persons", ner.Person,
 		"Locations", ner.Location,
 		"Organisations", ner.Organisation)
