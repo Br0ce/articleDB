@@ -1,11 +1,9 @@
-package test
+package article
 
 import (
 	"net/url"
 	"testing"
 	"time"
-
-	articleDB "github.com/Br0ce/articleDB/pkg"
 )
 
 func TestArticle_Equal(t *testing.T) {
@@ -19,7 +17,7 @@ func TestArticle_Equal(t *testing.T) {
 		Body      string
 	}
 	type args struct {
-		b articleDB.Article
+		b Article
 	}
 
 	title := "Test Title"
@@ -41,7 +39,7 @@ func TestArticle_Equal(t *testing.T) {
 		{
 			name:   "pass",
 			fields: fields{Title: title, Addr: addr, Author: author, Published: puplished, Body: body},
-			args: args{b: articleDB.Article{
+			args: args{b: Article{
 				Title:     title,
 				Addr:      addr,
 				Author:    author,
@@ -53,7 +51,7 @@ func TestArticle_Equal(t *testing.T) {
 		{
 			name:   "different title",
 			fields: fields{Title: title, Addr: addr, Author: author, Published: puplished, Body: body},
-			args: args{b: articleDB.Article{
+			args: args{b: Article{
 				Title:     "Some Other Title",
 				Addr:      addr,
 				Author:    author,
@@ -65,7 +63,7 @@ func TestArticle_Equal(t *testing.T) {
 		{
 			name:   "different addr",
 			fields: fields{Title: title, Addr: addr, Author: author, Published: puplished, Body: body},
-			args: args{b: articleDB.Article{
+			args: args{b: Article{
 				Title:     title,
 				Addr:      *addr.JoinPath("different"),
 				Author:    author,
@@ -77,7 +75,7 @@ func TestArticle_Equal(t *testing.T) {
 		{
 			name:   "different published date",
 			fields: fields{Title: title, Addr: addr, Author: author, Published: puplished, Body: body},
-			args: args{b: articleDB.Article{
+			args: args{b: Article{
 				Title:     title,
 				Addr:      addr,
 				Author:    author,
@@ -89,7 +87,7 @@ func TestArticle_Equal(t *testing.T) {
 		{
 			name:   "different body",
 			fields: fields{Title: title, Addr: addr, Author: author, Published: puplished, Body: body},
-			args: args{b: articleDB.Article{
+			args: args{b: Article{
 				Title:     title,
 				Addr:      addr,
 				Author:    author,
@@ -101,7 +99,7 @@ func TestArticle_Equal(t *testing.T) {
 		{
 			name:   "different summary",
 			fields: fields{Title: title, Addr: addr, Author: author, Published: puplished, Body: body},
-			args: args{b: articleDB.Article{
+			args: args{b: Article{
 				Title:     title,
 				Addr:      addr,
 				Author:    author,
@@ -115,7 +113,7 @@ func TestArticle_Equal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &articleDB.Article{
+			a := &Article{
 				Title:     tt.fields.Title,
 				Addr:      tt.fields.Addr,
 				Author:    tt.fields.Author,
