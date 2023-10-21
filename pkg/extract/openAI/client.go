@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 
 	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/encoding"
+	"github.com/Br0ce/articleDB/pkg/request"
 )
 
 var (
@@ -138,7 +137,8 @@ func (c *Client) process(ctx context.Context, dto completionDTO) (string, error)
 		return "", err
 	}
 
-	response, err := c.httpRequest(ctx, payload)
+	var response responseDTO
+	err = request.Post(ctx, c.completionAddr, c.getHeader(), payload, &response)
 	if err != nil {
 		return "", err
 	}
@@ -152,42 +152,12 @@ func (c *Client) process(ctx context.Context, dto completionDTO) (string, error)
 	return result, nil
 }
 
-// httpRequest performs the acutal post request to the openAI api and returns a responseDTO.
-// To timeout the httpRequest, use an appropriate context.
-// For now, there is no retrying or throttling performed.
-func (c *Client) httpRequest(ctx context.Context, payload io.Reader) (responseDTO, error) {
-	c.log.Debug("perform http request to openAI", "method", "httpRequest")
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.completionAddr, payload)
-	if err != nil {
-		return responseDTO{}, fmt.Errorf("%s, %w", err.Error(), ErrBadGateway)
+// getHeader returns a map with Content-Type and Authorization set for openAI.
+func (c *Client) getHeader() map[string][]string {
+	return map[string][]string{
+		"Content-Type":  {"application/json"},
+		"Authorization": {fmt.Sprintf("Bearer %s", c.apiKey)},
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
-
-	cl := http.Client{}
-	resp, err := cl.Do(req)
-	if err != nil {
-		return responseDTO{}, err
-	}
-	defer resp.Body.Close()
-
-	c.log.Debug("response info",
-		"method", "request",
-		"status", resp.Status,
-		"headers", resp.Header)
-
-	if resp.StatusCode >= 300 {
-		return responseDTO{}, ErrBadGateway
-	}
-
-	var dto responseDTO
-	err = encoding.DecodeJSON(resp.Body, &dto)
-	if err != nil {
-		return responseDTO{}, err
-	}
-
-	return dto, nil
 }
 
 // resultText extracts the result text from the response and returns

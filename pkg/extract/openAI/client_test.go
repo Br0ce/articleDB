@@ -3,14 +3,11 @@ package openai
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/Br0ce/articleDB/pkg/article"
 	"github.com/Br0ce/articleDB/pkg/encoding"
@@ -119,122 +116,6 @@ func TestClient_Summarize(t *testing.T) {
 	}
 }
 
-func TestClient_httpRequest_pass(t *testing.T) {
-	t.Parallel()
-	apiKey := "testKey"
-	id := "1234"
-	payload := "payload"
-
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		a := r.Header.Get("Authorization")
-		if a != fmt.Sprintf("Bearer %s", apiKey) {
-			t.Fatalf("apiKey: want %s got %s", apiKey, a)
-		}
-		ct := r.Header.Get("Content-Type")
-		if ct != "application/json" {
-			t.Fatalf("content-type: want application/json got %s", ct)
-		}
-
-		pp, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("could not read body, %s", err.Error())
-		}
-		defer r.Body.Close()
-		if string(pp) != payload {
-			t.Fatalf("body: want %s got %s", payload, string(pp))
-		}
-
-		resp := responseDTO{ID: id}
-		bb, err := encoding.EncodeJSON(resp)
-		if err != nil {
-			t.Fatalf("could not encode, %s", err.Error())
-		}
-
-		_, err = w.Write(bb)
-		if err != nil {
-			t.Fatalf("could not write bytes, %s", err.Error())
-		}
-
-	}))
-	defer svr.Close()
-
-	t.Run("pass", func(t *testing.T) {
-		log := logger.NewTest(false)
-
-		c := &Client{
-			apiKey:         apiKey,
-			completionAddr: svr.URL,
-			log:            log,
-		}
-
-		got, err := c.httpRequest(context.TODO(), strings.NewReader(payload))
-		if err != nil {
-			t.Errorf("Client.execRequest() error = %v", err)
-			return
-		}
-		if !reflect.DeepEqual(got, responseDTO{ID: id}) {
-			t.Errorf("Client.execRequest() = %v", got)
-		}
-	})
-}
-
-func TestClient_httpRequest_fail(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name        string
-		timeout     time.Duration
-		handlerFunc http.HandlerFunc
-	}{
-		{
-			name:    "response code > 299",
-			timeout: time.Second,
-			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(300)
-			}),
-		},
-		{
-			name:    "timeout",
-			timeout: time.Millisecond * 2,
-			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				time.Sleep(time.Millisecond * 10)
-			}),
-		},
-		{
-			name:    "invalid dto",
-			timeout: time.Second,
-			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				_, err := w.Write([]byte{})
-				if err != nil {
-					t.Fatalf("could not write bytes, %s", err.Error())
-				}
-			}),
-		},
-	}
-
-	log := logger.NewTest(true)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svr := httptest.NewServer(tt.handlerFunc)
-			defer svr.Close()
-
-			c := &Client{
-				completionAddr: svr.URL,
-				log:            log,
-			}
-
-			ctx, cancleFn := context.WithTimeout(context.TODO(), tt.timeout)
-			defer cancleFn()
-
-			_, err := c.httpRequest(ctx, strings.NewReader(""))
-
-			if err == nil {
-				t.Fatalf("Client.execRequest() without err")
-			}
-		})
-	}
-}
-
 func TestClient_resultText(t *testing.T) {
 	t.Parallel()
 	log := logger.NewTest(false)
@@ -308,7 +189,7 @@ func TestClient_resultText(t *testing.T) {
 func TestClient_toNER(t *testing.T) {
 	t.Parallel()
 
-	log := logger.NewTest(true)
+	log := logger.NewTest(false)
 
 	tests := []struct {
 		name    string
