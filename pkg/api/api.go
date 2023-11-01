@@ -6,7 +6,6 @@ import (
 
 	"github.com/Br0ce/articleDB/pkg/adder"
 	"github.com/Br0ce/articleDB/pkg/db/inmem"
-	"github.com/Br0ce/articleDB/pkg/extract/noop"
 )
 
 type Api struct {
@@ -16,11 +15,10 @@ type Api struct {
 
 func New(log *slog.Logger) (*Api, error) {
 	db := inmem.NewArticle()
-	noop := noop.Client{}
 
 	_, err := adder.New(
-		adder.WithSummarizer(noop),
-		adder.WithNamedEntityRecognizer(noop),
+		// adder.WithSummarizer(noop),
+		// adder.WithNamedEntityRecognizer(noop),
 		adder.WithDB(db),
 		adder.WithLogger(log.With("name", "api")),
 	)
