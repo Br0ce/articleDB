@@ -29,6 +29,10 @@ func TestPost_pass(t *testing.T) {
 	}
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("expect post method, got %s", r.Method)
+		}
+
 		for k, v := range header {
 			if v[0] != r.Header.Get(k) {
 				t.Fatalf("header %s is not equal, want %s got %s", k, v, r.Header.Get(k))
@@ -48,6 +52,8 @@ func TestPost_pass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("could not encode, %s", err.Error())
 		}
+
+		w.Header().Add("Content-type", "application/json")
 		_, err = w.Write(bb)
 		if err != nil {
 			t.Fatalf("could not write bytes, %s", err.Error())
@@ -68,8 +74,59 @@ func TestPost_pass(t *testing.T) {
 	})
 }
 
-func TestPost_fail(t *testing.T) {
+func TestGet_pass(t *testing.T) {
 	t.Parallel()
+
+	type dto struct {
+		ID string `json:"id"`
+	}
+
+	id := "1234"
+	header := http.Header{
+		"Content-Type":  {"application/json"},
+		"Authorization": {"Bearer 1324"},
+	}
+
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("expect get method, got %s", r.Method)
+		}
+
+		for k, v := range header {
+			if v[0] != r.Header.Get(k) {
+				t.Fatalf("header %s is not equal, want %s got %s", k, v, r.Header.Get(k))
+			}
+		}
+
+		bb, err := encoding.EncodeJSON(dto{ID: id})
+		if err != nil {
+			t.Fatalf("could not encode, %s", err.Error())
+		}
+
+		w.Header().Add("Content-type", "application/json")
+		_, err = w.Write(bb)
+		if err != nil {
+			t.Fatalf("could not write bytes, %s", err.Error())
+		}
+	}))
+	defer svr.Close()
+
+	t.Run("pass", func(t *testing.T) {
+		var got dto
+		err := Get(context.TODO(), svr.URL, header, &got)
+		if err != nil {
+			t.Errorf("not expected error = %v", err)
+			return
+		}
+		if !reflect.DeepEqual(got, dto{ID: id}) {
+			t.Errorf("not Equal, got = %v", got)
+		}
+	})
+}
+
+func TestDo_Fail(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		timeout     time.Duration
@@ -127,6 +184,7 @@ func TestPost_fail(t *testing.T) {
 			name:    "invalid dto",
 			timeout: time.Second,
 			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Add("Content-type", "application/json")
 				_, err := w.Write([]byte{})
 				if err != nil {
 					t.Fatalf("could not write bytes, %s", err.Error())
@@ -135,6 +193,19 @@ func TestPost_fail(t *testing.T) {
 			value: struct {
 				ID string `json:"id"`
 			}{},
+			wantErr: ErrUnprocessableEntity,
+		},
+		{
+			name:    "response header with application/json, but no value provided ",
+			timeout: time.Second,
+			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Add("Content-type", "application/json")
+				_, err := w.Write([]byte{})
+				if err != nil {
+					t.Fatalf("could not write bytes, %s", err.Error())
+				}
+			}),
+			value:   nil,
 			wantErr: ErrUnprocessableEntity,
 		},
 	}
@@ -146,7 +217,13 @@ func TestPost_fail(t *testing.T) {
 			ctx, cancleFn := context.WithTimeout(context.TODO(), tt.timeout)
 			defer cancleFn()
 
-			err := Post(ctx, svr.URL, http.Header{}, strings.NewReader(""), tt.value)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, svr.URL, nil)
+			if err != nil {
+				t.Fatalf("cannot create test request, %s", err.Error())
+			}
+			req.Header = tt.header
+
+			err = do(context.TODO(), req, tt.value)
 			if err == nil {
 				t.Fatalf("err is nil")
 			}
@@ -159,6 +236,7 @@ func TestPost_fail(t *testing.T) {
 }
 
 func Test_getErr(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		code    int

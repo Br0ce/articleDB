@@ -90,6 +90,7 @@ func TestClient_Summarize(t *testing.T) {
 					t.Fatalf("could not encode, %s", err.Error())
 				}
 
+				w.Header().Add("Content-type", "application/json")
 				_, err = w.Write(bb)
 				if err != nil {
 					t.Fatalf("could not write bytes, %s", err.Error())

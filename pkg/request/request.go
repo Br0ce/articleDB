@@ -21,8 +21,11 @@ var (
 	ErrNotFound            = errors.New("not found")
 )
 
-// Post performs a post request to addr with the content of r as body and stores the
-// result in the value pointed to by v. To timeout the httpRequest, use an appropriate context.
+// Post performs a post request to addr with the content of r as body. If the response
+// content-type is application/json the response body is stored in the value pointed
+// to by v.
+// To timeout the httpRequest, use an appropriate context.
+//
 // There is no retrying or throttling performed.
 func Post(ctx context.Context, addr string, header http.Header, r io.Reader, v any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, r)
@@ -30,7 +33,30 @@ func Post(ctx context.Context, addr string, header http.Header, r io.Reader, v a
 		return fmt.Errorf("%s, %w", err.Error(), ErrBadGateway)
 	}
 	req.Header = header
+	return do(ctx, req, v)
+}
 
+// Get performs a get request to addr with the content of r as body. If the response
+// content-type is application/json the response body is stored in the value pointed
+// to by v.
+// To timeout the httpRequest, use an appropriate context.
+//
+// There is no retrying or throttling performed.
+func Get(ctx context.Context, addr string, header http.Header, v any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
+	if err != nil {
+		return fmt.Errorf("%s, %w", err.Error(), ErrBadGateway)
+	}
+	req.Header = header
+	return do(ctx, req, v)
+}
+
+// do executes the given request. If the response content-type is
+// application/json the response body is stored in the value pointed to by v.
+// To timeout the httpRequest, use an appropriate context.
+//
+// There is no retrying or throttling performed.
+func do(ctx context.Context, req *http.Request, v any) error {
 	c := http.Client{}
 	resp, err := c.Do(req)
 	if err != nil {
@@ -40,6 +66,10 @@ func Post(ctx context.Context, addr string, header http.Header, r io.Reader, v a
 
 	if !statusOK(resp.StatusCode) {
 		return getErr(resp.StatusCode)
+	}
+
+	if resp.Header.Get("Content-type") != "application/json" {
+		return nil
 	}
 
 	err = encoding.DecodeJSON(resp.Body, &v)
