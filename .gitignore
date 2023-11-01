@@ -33,3 +33,5 @@ Thumbs.db
 # Project
 conf/.env
 vendor
+.env
+cmd
