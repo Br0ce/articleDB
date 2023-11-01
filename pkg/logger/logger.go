@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"log/slog"
 	"os"
 )
@@ -19,11 +20,20 @@ func New(devLogger bool) *slog.Logger {
 
 func NewTest(debug bool) *slog.Logger {
 	var level = new(slog.LevelVar)
-	lg := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level, AddSource: true}))
+	lg := slog.New(slog.NewTextHandler(
+		getWriter(debug),
+		&slog.HandlerOptions{Level: level, AddSource: true}))
 
 	if debug {
 		level.Set(slog.LevelDebug)
 	}
 
 	return lg
+}
+
+func getWriter(debug bool) io.Writer {
+	if debug {
+		return os.Stdout
+	}
+	return io.Discard
 }
