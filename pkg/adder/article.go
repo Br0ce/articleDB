@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Br0ce/articleDB/pkg/article"
+	"github.com/Br0ce/articleDB/pkg/vector"
 )
 
 type Summarizer interface {
@@ -18,11 +19,16 @@ type NamedEntityRecognizer interface {
 	NER(ctx context.Context, text string) (article.NER, error)
 }
 
+type Encoder interface {
+	Encode(ctx context.Context, texts []string) ([]vector.Vector, error)
+}
+
 type Adder struct {
-	ner NamedEntityRecognizer
-	sum Summarizer
-	db  article.DB
-	log *slog.Logger
+	ner     NamedEntityRecognizer
+	sum     Summarizer
+	encoder Encoder
+	db      article.DB
+	log     *slog.Logger
 }
 
 type AdderOption func(a *Adder)
@@ -42,6 +48,10 @@ func New(opts ...AdderOption) (*Adder, error) {
 		return nil, errors.New("nerer is nil")
 	}
 
+	if adder.encoder == nil {
+		return nil, errors.New("encoder is nil")
+	}
+
 	if adder.log == nil {
 		return nil, errors.New("logger is nil")
 	}
@@ -58,6 +68,12 @@ func WithSummarizer(sum Summarizer) AdderOption {
 func WithNamedEntityRecognizer(ner NamedEntityRecognizer) AdderOption {
 	return func(a *Adder) {
 		a.ner = ner
+	}
+}
+
+func WithEncoder(encoder Encoder) AdderOption {
+	return func(a *Adder) {
+		a.encoder = encoder
 	}
 }
 
@@ -109,6 +125,14 @@ func (a *Adder) addFeatures(ctx context.Context, ar article.Article) (article.Ar
 			return err
 		}
 		ar.NER = ner
+		return nil
+	})
+
+	g.Go(func() error {
+		_, err := a.encoder.Encode(ctx, []string{ar.Body})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 

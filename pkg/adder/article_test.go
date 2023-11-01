@@ -8,19 +8,20 @@ import (
 	"testing"
 
 	"github.com/Br0ce/articleDB/pkg/article"
-	"github.com/Br0ce/articleDB/pkg/extract/noop"
 	"github.com/Br0ce/articleDB/pkg/logger"
 	"github.com/Br0ce/articleDB/pkg/mock"
+	"github.com/Br0ce/articleDB/pkg/vector"
 )
 
 func TestAdder_Add(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		log   *slog.Logger
-		sumFn func(ctx context.Context, text string) (string, error)
-		nerFn func(ctx context.Context, text string) (article.NER, error)
-		addFn func(ctx context.Context, ar article.Article) (string, error)
+		log       *slog.Logger
+		sumFn     func(ctx context.Context, text string) (string, error)
+		nerFn     func(ctx context.Context, text string) (article.NER, error)
+		encoderFn func(ctx context.Context, texts []string) ([]vector.Vector, error)
+		addFn     func(ctx context.Context, ar article.Article) (string, error)
 	}
 
 	type args struct {
@@ -54,6 +55,12 @@ func TestAdder_Add(t *testing.T) {
 					}
 					return article.NER{}, nil
 				},
+				encoderFn: func(ctx context.Context, texts []string) ([]vector.Vector, error) {
+					if texts == nil {
+						t.Fatal("ner texts is nil")
+					}
+					return []vector.Vector{}, nil
+				},
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "1234", nil
 				},
@@ -77,6 +84,9 @@ func TestAdder_Add(t *testing.T) {
 				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					return article.NER{}, nil
 				},
+				encoderFn: func(ctx context.Context, texts []string) ([]vector.Vector, error) {
+					return []vector.Vector{}, nil
+				},
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "", nil
 				},
@@ -97,6 +107,9 @@ func TestAdder_Add(t *testing.T) {
 				},
 				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					return article.NER{}, errors.New("ner error")
+				},
+				encoderFn: func(ctx context.Context, texts []string) ([]vector.Vector, error) {
+					return []vector.Vector{}, nil
 				},
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "", nil
@@ -121,6 +134,9 @@ func TestAdder_Add(t *testing.T) {
 				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
 					return article.NER{}, nil
 				},
+				encoderFn: func(ctx context.Context, texts []string) ([]vector.Vector, error) {
+					return []vector.Vector{}, nil
+				},
 				addFn: func(ctx context.Context, ar article.Article) (string, error) {
 					return "", errors.New("db error")
 				},
@@ -135,19 +151,47 @@ func TestAdder_Add(t *testing.T) {
 			wantErr: true,
 			errMsg:  "db error",
 		},
+		{
+			name: "encoder error",
+			fields: fields{
+				sumFn: func(ctx context.Context, txt string) (string, error) {
+					return "Summary of text.", nil
+				},
+				nerFn: func(ctx context.Context, txt string) (article.NER, error) {
+					return article.NER{}, nil
+				},
+				encoderFn: func(ctx context.Context, texts []string) ([]vector.Vector, error) {
+					return nil, errors.New("encoder error")
+				},
+				addFn: func(ctx context.Context, ar article.Article) (string, error) {
+					return "", nil
+				},
+				log: log,
+			},
+			args: args{
+				ctx: context.TODO(),
+				article: article.Article{
+					Body: body,
+				},
+			},
+			wantErr: true,
+			errMsg:  "encoder error",
+		},
 	}
 
 	for _, tt := range tests {
 		sun := &mock.Summarizer{SummarizeFn: tt.fields.sumFn}
 		ner := &mock.NER{NERFn: tt.fields.nerFn}
+		encoder := &mock.Encoder{EncodeFn: tt.fields.encoderFn}
 		db := &mock.DB{AddFn: tt.fields.addFn}
 
 		t.Run(tt.name, func(t *testing.T) {
 			a := Adder{
-				sum: sun,
-				ner: ner,
-				db:  db,
-				log: tt.fields.log}
+				sum:     sun,
+				ner:     ner,
+				encoder: encoder,
+				db:      db,
+				log:     tt.fields.log}
 
 			got, err := a.Add(tt.args.ctx, tt.args.article)
 			if (err != nil) != tt.wantErr {
@@ -173,7 +217,9 @@ func TestNewWith(t *testing.T) {
 	t.Parallel()
 
 	log := logger.NewTest(false)
-	noop := noop.Client{}
+	sum := &mock.Summarizer{}
+	ner := &mock.NER{}
+	encoder := &mock.Encoder{}
 
 	tests := []struct {
 		opts    []AdderOption
@@ -184,29 +230,33 @@ func TestNewWith(t *testing.T) {
 		{
 			name: "pass",
 			opts: []AdderOption{
-				WithSummarizer(noop),
-				WithNamedEntityRecognizer(noop),
+				WithSummarizer(sum),
+				WithNamedEntityRecognizer(ner),
+				WithEncoder(encoder),
 				WithLogger(log),
 			},
 			wantErr: false,
 			want: &Adder{
-				sum: noop,
-				ner: noop,
-				log: log,
+				sum:     sum,
+				ner:     ner,
+				encoder: encoder,
+				log:     log,
 			},
 		},
 		{
 			name: "no logger",
 			opts: []AdderOption{
-				WithNamedEntityRecognizer(noop),
-				WithSummarizer(noop),
+				WithSummarizer(sum),
+				WithNamedEntityRecognizer(ner),
+				WithEncoder(encoder),
 			},
 			wantErr: true,
 		},
 		{
 			name: "no summarizer",
 			opts: []AdderOption{
-				WithNamedEntityRecognizer(noop),
+				WithNamedEntityRecognizer(ner),
+				WithEncoder(encoder),
 				WithLogger(log),
 			},
 			wantErr: true,
@@ -214,7 +264,17 @@ func TestNewWith(t *testing.T) {
 		{
 			name: "no named entity recognizer",
 			opts: []AdderOption{
-				WithSummarizer(noop),
+				WithSummarizer(sum),
+				WithEncoder(encoder),
+				WithLogger(log),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no encoder",
+			opts: []AdderOption{
+				WithSummarizer(sum),
+				WithNamedEntityRecognizer(ner),
 				WithLogger(log),
 			},
 			wantErr: true,
