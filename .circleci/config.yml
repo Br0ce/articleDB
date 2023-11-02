@@ -6,7 +6,7 @@ jobs:
       - image: golangci/golangci-lint:v1.55-alpine
     steps:
       - checkout
-      - run: golangci-lint run
+      - run: golangci-lint run --timeout=3m 
   test:
     docker:
       - image: cimg/go:1.21
